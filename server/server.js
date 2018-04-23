@@ -1,37 +1,55 @@
-const mongoose = require('mongoose');
+const express = require('express');
+const bodyParser = require('body-parser');
+const {ObjectID} = require('mongodb');
 
-mongoose.Promise = global.Promise;
-mongoose.connect('mongodb://localhost:27017/TodoApp');
+const {mongoose} = require('./db/mongoose');
+const {Todo} = require('./models/todo');
+const {User} = require('./models/user');
 
-const Todo = mongoose.model('Todo', {
-  text: {
-    type: String,
-    required: true,
-    minlength: 1,
-    trim: true
-  },
-  completed: {
-    type: Boolean,
-    default: false},
-  completedAt: {
-    type: Number,
-    default: null
+const app = express();
+
+app.use(bodyParser.json());
+
+app.post('/todos', (req, res) => {
+  const todo = new Todo({
+    text: req.body.text
+  });
+
+  todo.save().then((doc) => {
+    res.send(doc);
+  }, (e) => {
+      res.status(400).send(e);
+  });
+});
+
+app.get('/todos', (req, res) => {
+  Todo.find().then((todos) => {
+    res.send({todos});
+  }, (e) => {
+    res.status(400).send(e);
+  });
+});
+
+app.listen(3000, () => {
+  console.log('Started om port 3000');
+});
+
+app.get('/todos/:id', (req, res) => {
+  const id = req.params.id;
+
+  if (!ObjectID.isValid(id)) {
+    return res.status(404).send();
   }
+
+  Todo.findById(id).then((todo) => {
+    if (!todo) {
+      return res.status(404).send();
+    }
+
+    res.send({todo});
+  }).catch((e) => {
+    res.status(400).send();
+  })
 });
 
-const User = mongoose.model('User', {
-  email: {
-    type: String,
-    required: true,
-    minlength: 1,
-    trim: true
-  }
-});
-
-const newUser = new User({email: 'kinogovno@ttt.com   '});
-
-newUser.save().then((doc) => {
-  console.log('Saved User: ', doc);
-}, (e) => {
-  console.log('Cannot save!', e);
-});
+module.exports = {app};
